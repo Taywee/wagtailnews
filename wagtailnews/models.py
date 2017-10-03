@@ -3,6 +3,7 @@ import os
 import warnings
 
 from django.conf import settings
+from django.core import urlresolvers
 from django.db import models
 from django.http import Http404, HttpResponsePermanentRedirect
 from django.shortcuts import get_object_or_404
@@ -12,11 +13,14 @@ from django.utils.http import urlquote
 from django.utils.six.moves.urllib.parse import urlparse
 from django.utils.text import slugify
 from django.utils.translation import ugettext_lazy as _
+
 from modelcluster.models import ClusterableModel
 from wagtail.contrib.wagtailroutablepage.models import RoutablePageMixin, route
 from wagtail.wagtailadmin.edit_handlers import FieldPanel
-from wagtail.wagtailcore.models import Page, CollectionMember
+from wagtail.wagtailcore.forms import PasswordViewRestrictionForm
+from wagtail.wagtailcore.models import Page, CollectionMember, BaseViewRestriction
 from wagtail.wagtailcore.utils import resolve_model_string
+from wagtail.wagtailcore.wagtail_hooks import require_wagtail_login
 from wagtail.wagtailsearch import index
 
 from . import feeds
@@ -242,6 +246,10 @@ class AbstractNewsItem(index.Indexed, ClusterableModel, CollectionMember):
         return context
 
     def serve(self, request):
+        restriction = self.check_view_restrictions(request)
+        if restriction:
+            return restriction
+
         template = self.get_template(request)
         context = self.get_context(request)
         return TemplateResponse(request, template, context)
@@ -295,6 +303,34 @@ class AbstractNewsItem(index.Indexed, ClusterableModel, CollectionMember):
 
             if commit:
                 self.save(update_fields=['live', 'has_unpublished_changes'])
+
+    def check_view_restrictions(newsitem, request):
+        """
+        Check whether there are any view restrictions on this newsitem which are
+        not fulfilled by the given request object. If there are, return an
+        HttpResponse that will notify the user of that restriction (and possibly
+        include a password / login form that will allow them to proceed). If
+        there are no such restrictions, return None
+        """
+        for restriction in newsitem.collection.get_view_restrictions():
+            if not restriction.accept_request(request):
+                if restriction.restriction_type == BaseViewRestriction.PASSWORD:
+                    form = PasswordViewRestrictionForm(instance=restriction,
+                                                       initial={'return_url': request.get_full_path()})
+                    action_url = urlresolvers.reverse('wagtailnews_authenticate_with_password', args=[restriction.id])
+
+                    password_required_template = getattr(settings, 'NEWS_PASSWORD_REQUIRED_TEMPLATE', 'wagtailnews/password_required.html')
+
+                    context = {
+                        'form': form,
+                        'action_url': action_url
+                    }
+                    return TemplateResponse(request, password_required_template, context)
+
+                elif restriction.restriction_type in [BaseViewRestriction.LOGIN, BaseViewRestriction.GROUPS]:
+                    return require_wagtail_login(next=request.get_full_path())
+
+        return None
 
     @property
     def status_string(self):
