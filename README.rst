@@ -2,21 +2,21 @@
 wagtailnews
 ===========
 
-A plugin for Wagtail that provides news / blogging functionality.
+A fork of the wagtailnews_ plugin  for Wagtail that provides news / blogging functionality.  This fork exists to allow news items to belong to a collection, enforcing collection permissions and restrictions (including viewer restrictions, mirroring the ``Page`` queryset's ``public()`` method and restricting unauthorized serving in the same way).  This is done to facilitate wagtailnews working with the wagtailapproval_ plugin.
 
 Installing
 ==========
 
 Install using pip::
 
-    pip install wagtailnews
+    pip install wagtailnews-collection
 
 It works with Wagtail 1.4 and upwards.
 
 Documentation
 =============
 
-`Documentation for Wagtail news <http://wagtail-news.readthedocs.org>`_ can be found on Read The Docs
+`Documentation for Wagtail news <http://wagtail-news.readthedocs.org>`_ can be found on Read The Docs.  This fork has no specific documentation, as it works almost exactly the same.
 
 Quick start
 ===========
@@ -60,3 +60,6 @@ Create news models for your application that inherit from the relevant ``wagtail
 
     class NewsItemRevision(AbstractNewsItemRevision):
         newsitem = models.ForeignKey(NewsItem, related_name='revisions')
+
+.. _wagtailnews: https://github.com/takeflight/wagtailnews
+.. _wagtailapproval: https://github.com/absperf/wagtailapproval

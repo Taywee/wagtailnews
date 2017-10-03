@@ -15,7 +15,7 @@ from django.utils.translation import ugettext_lazy as _
 from modelcluster.models import ClusterableModel
 from wagtail.contrib.wagtailroutablepage.models import RoutablePageMixin, route
 from wagtail.wagtailadmin.edit_handlers import FieldPanel
-from wagtail.wagtailcore.models import Page
+from wagtail.wagtailcore.models import Page, CollectionMember
 from wagtail.wagtailcore.utils import resolve_model_string
 from wagtail.wagtailsearch import index
 
@@ -192,7 +192,7 @@ class NewsItemQuerySet(models.QuerySet):
         return self.filter(live=True)
 
 
-class AbstractNewsItem(index.Indexed, ClusterableModel):
+class AbstractNewsItem(index.Indexed, ClusterableModel, CollectionMember):
 
     newsindex = models.ForeignKey(Page, on_delete=models.CASCADE)
     date = models.DateTimeField('Published date', default=timezone.now)

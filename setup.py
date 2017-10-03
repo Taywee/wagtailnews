@@ -2,7 +2,7 @@
 """
 Install wagtailnews using setuptools
 """
-from setuptools import find_packages, setup
+from setuptools import setup
 
 with open('wagtailnews/version.py', 'r') as f:
     version = None
@@ -21,13 +21,13 @@ documentation_extras = [
 ]
 
 setup(
-    name='wagtailnews',
+    name='wagtailnews-collection',
     version=version,
-    description='News / blog plugin for the Wagtail CMS',
+    description='News / blog plugin for the Wagtail CMS, but with news items belonging to collections, enforcing permissions',
     long_description=readme,
-    author='Tim Heap',
-    author_email='tim@takeflight.com.au',
-    url='https://github.com/takeflight/wagtailnews/',
+    author='Taylor C. Richberger',
+    author_email='tcr@absolute-performance.com',
+    url='https://github.com/taywee/wagtailnews-collection/',
 
     install_requires=[
         'wagtail>=1.5',
@@ -37,12 +37,18 @@ setup(
     },
     zip_safe=False,
     license='BSD License',
-
-    packages=find_packages(exclude=['tests*']),
-
+    packages=[
+        'wagtailnews',
+        'wagtailnews.templatetags',
+        'wagtailnews.views',
+        ],
     include_package_data=True,
-    package_data={},
-
+    package_data={
+        'wagtailnews': [
+            'templates/**/*',
+            'static/**/*',
+            ]
+        },
     classifiers=[
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
