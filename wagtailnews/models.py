@@ -198,6 +198,11 @@ class NewsItemQuerySet(models.QuerySet):
 
 class AbstractNewsItem(index.Indexed, ClusterableModel, CollectionMember):
 
+    # This is needed for the permission policy; will always be blank.
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name=_('User'),
+        null=True, blank=True, on_delete=models.SET_NULL)
+
     newsindex = models.ForeignKey(Page, on_delete=models.CASCADE)
     date = models.DateTimeField('Published date', default=timezone.now)
 
@@ -304,7 +309,7 @@ class AbstractNewsItem(index.Indexed, ClusterableModel, CollectionMember):
             if commit:
                 self.save(update_fields=['live', 'has_unpublished_changes'])
 
-    def check_view_restrictions(newsitem, request):
+    def check_view_restrictions(self, request):
         """
         Check whether there are any view restrictions on this newsitem which are
         not fulfilled by the given request object. If there are, return an
@@ -312,7 +317,7 @@ class AbstractNewsItem(index.Indexed, ClusterableModel, CollectionMember):
         include a password / login form that will allow them to proceed). If
         there are no such restrictions, return None
         """
-        for restriction in newsitem.collection.get_view_restrictions():
+        for restriction in self.collection.get_view_restrictions():
             if not restriction.accept_request(request):
                 if restriction.restriction_type == BaseViewRestriction.PASSWORD:
                     form = PasswordViewRestrictionForm(instance=restriction,

@@ -2,6 +2,7 @@ from io import StringIO
 from urllib.parse import urlparse
 
 from django.conf import settings
+from django.contrib.auth import get_user
 from django.core.exceptions import PermissionDenied
 from django.core.handlers.base import BaseHandler
 from django.core.handlers.wsgi import WSGIRequest
@@ -13,6 +14,7 @@ from wagtail.wagtailadmin import messages
 from wagtail.wagtailadmin.edit_handlers import (
     ObjectList, extract_panel_definitions_from_model_class)
 from wagtail.wagtailcore.models import Page
+from wagtail.wagtailcore.permission_policies.collections import CollectionOwnershipPermissionPolicy
 
 from ..forms import SaveActionSet
 from ..models import NewsIndexMixin
@@ -89,11 +91,16 @@ def edit(request, pk, newsitem_pk):
         Page.objects.specific().type(NewsIndexMixin), pk=pk)
     NewsItem = newsindex.get_newsitem_model()
 
-    if not request.user.has_perms(format_perms(NewsItem, ['change'])):
-        raise PermissionDenied()
-
     newsitem = get_object_or_404(NewsItem, newsindex=newsindex, pk=newsitem_pk)
     newsitem = newsitem.get_latest_revision_as_newsitem()
+
+    # Permission is only granted on collection, otherwise any user who can create can edit.
+    policy = CollectionOwnershipPermissionPolicy(
+        model=NewsItem,
+        auth_model=NewsItem)
+    if not policy.user_has_permission_for_instance(get_user(request), 'change', newsitem):
+        raise PermissionDenied()
+
 
     EditHandler = get_newsitem_edit_handler(NewsItem)
     EditForm = EditHandler.get_form_class(NewsItem)
@@ -145,7 +152,10 @@ def unpublish(request, pk, newsitem_pk):
         Page.objects.specific().type(NewsIndexMixin), pk=pk)
     NewsItem = newsindex.get_newsitem_model()
 
-    if not request.user.has_perms(format_perms(NewsItem, ['change'])):
+    policy = CollectionOwnershipPermissionPolicy(
+        model=NewsItem,
+        auth_model=NewsItem)
+    if not policy.user_has_permission_for_instance(get_user(request), 'change', newsitem):
         raise PermissionDenied()
 
     newsitem = get_object_or_404(NewsItem, newsindex=newsindex, pk=newsitem_pk)
@@ -169,7 +179,11 @@ def delete(request, pk, newsitem_pk):
         Page.objects.specific().type(NewsIndexMixin), pk=pk)
     NewsItem = newsindex.get_newsitem_model()
 
-    if not request.user.has_perms(format_perms(NewsItem, ['delete'])):
+    # Permission is only granted on collection, otherwise any user who can create can delete.
+    policy = CollectionOwnershipPermissionPolicy(
+        model=NewsItem,
+        auth_model=NewsItem)
+    if not policy.user_has_permission_for_instance(get_user(request), 'delete', newsitem):
         raise PermissionDenied()
 
     newsitem = get_object_or_404(NewsItem, newsindex=newsindex, pk=newsitem_pk)
@@ -186,6 +200,7 @@ def delete(request, pk, newsitem_pk):
 
 
 def view_draft(request, pk, newsitem_pk):
+    # TODO: add privacy restrictions here
     newsindex = get_object_or_404(
         Page.objects.specific().type(NewsIndexMixin), pk=pk)
     NewsItem = newsindex.get_newsitem_model()
