@@ -45,8 +45,10 @@ setup(
     include_package_data=True,
     package_data={
         'wagtailnews': [
-            'templates/**/*',
-            'static/**/*',
+            'templates/**/*.html',
+            'templates/**/*.js',
+            'static/**/*.js',
+            'static/**/*.html',
             ]
         },
     classifiers=[
