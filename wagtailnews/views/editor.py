@@ -141,7 +141,6 @@ def edit(request, newsindex, user, NewsItem, newsitem, policy):
             newsitem = form.save(commit=False)
             if not policy.user_has_permission_for_instance(user, 'change', newsitem):
                 raise PermissionDenied()
-            newsitem.save()
             revision = newsitem.save_revision(user=user)
 
             if action is SaveActionSet.publish:
