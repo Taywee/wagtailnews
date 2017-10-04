@@ -180,9 +180,9 @@ def unpublish(request, newsindex, user, NewsItem, newsitem, policy):
     if request.method == 'POST':
         newsitem.unpublish()
         messages.success(request, _('{} has been unpublished').format(newsitem), [
-            (reverse('wagtailnews:edit', kwargs={'pk': pk, 'newsitem_pk': newsitem_pk}), _('Edit')),
+            (reverse('wagtailnews:edit', kwargs={'pk': newsindex.pk, 'newsitem_pk': newsitem.pk}), _('Edit')),
         ])
-        return redirect('wagtailnews:index', pk=pk)
+        return redirect('wagtailnews:index', pk=newsindex.pk)
 
     return render(request, 'wagtailnews/unpublish.html', {
         'newsindex': newsindex,
