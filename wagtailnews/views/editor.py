@@ -22,6 +22,43 @@ from ..permissions import format_perms, perms_for_template
 
 OPEN_PREVIEW_PARAM = 'do_preview'
 
+# Can't use this for add, as it has to check mid-call.
+def permission_check(perm):
+    def wrap_fun(function):
+        def fun_call(request, pk, newsitem_pk=None):
+            newsindex = get_object_or_404(
+                Page.objects.specific().type(NewsIndexMixin), pk=pk)
+            NewsItem = newsindex.get_newsitem_model()
+            user = get_user(request)
+
+            policy = CollectionOwnershipPermissionPolicy(
+                model=NewsItem,
+                auth_model=NewsItem)
+
+            if perm == 'add':
+                return function(
+                    request=request,
+                    newsindex=newsindex,
+                    NewsItem=NewsItem,
+                    user=user,
+                    policy=policy)
+
+            newsitem = get_object_or_404(NewsItem, newsindex=newsindex, pk=newsitem_pk)
+            if perm == 'change':
+                newsitem = newsitem.get_latest_revision_as_newsitem()
+
+            if not policy.user_has_permission_for_instance(user, perm, newsitem):
+                raise PermissionDenied()
+
+            return function(
+                request=request,
+                newsindex=newsindex,
+                user=user, 
+                NewsItem=NewsItem,
+                newsitem=newsitem,
+                policy=policy)
+        return fun_call
+    return wrap_fun
 
 @lru_cache(maxsize=None)
 def get_newsitem_edit_handler(NewsItem):
@@ -33,13 +70,8 @@ def get_newsitem_edit_handler(NewsItem):
     return ObjectList(panels).bind_to_model(NewsItem)
 
 
-def create(request, pk):
-    newsindex = get_object_or_404(
-        Page.objects.specific().type(NewsIndexMixin), pk=pk)
-    NewsItem = newsindex.get_newsitem_model()
-
-    user = get_user(request)
-
+@permission_check('add')
+def create(request, newsindex, user, NewsItem, policy):
     if not user.has_perms(format_perms(NewsItem, ['add', 'change'])):
         raise PermissionDenied()
 
@@ -57,11 +89,6 @@ def create(request, pk):
             newsitem.live = action is SaveActionSet.publish
 
             # We still need to validate that the user can add to the collection
-            policy = CollectionOwnershipPermissionPolicy(
-                model=NewsItem,
-                auth_model=NewsItem)
-
-            # Can not use instance check for add permissions
             if newsitem.collection not in policy.collections_user_has_permission_for(user, 'add'):
                 raise PermissionDenied()
 
@@ -99,23 +126,8 @@ def create(request, pk):
     })
 
 
-def edit(request, pk, newsitem_pk):
-    newsindex = get_object_or_404(
-        Page.objects.specific().type(NewsIndexMixin), pk=pk)
-    NewsItem = newsindex.get_newsitem_model()
-
-    newsitem = get_object_or_404(NewsItem, newsindex=newsindex, pk=newsitem_pk)
-    newsitem = newsitem.get_latest_revision_as_newsitem()
-    user = get_user(request)
-
-    # Permission is only granted on collection, otherwise any user who can create can edit.
-    policy = CollectionOwnershipPermissionPolicy(
-        model=NewsItem,
-        auth_model=NewsItem)
-    if not policy.user_has_permission_for_instance(user, 'change', newsitem):
-        raise PermissionDenied()
-
-
+@permission_check('change')
+def edit(request, newsindex, user, NewsItem, newsitem, policy):
     EditHandler = get_newsitem_edit_handler(NewsItem)
     EditForm = EditHandler.get_form_class(NewsItem)
 
@@ -127,6 +139,8 @@ def edit(request, pk, newsitem_pk):
 
         if form.is_valid():
             newsitem = form.save(commit=False)
+            if not policy.user_has_permission_for_instance(user, 'change', newsitem):
+                raise PermissionDenied()
             revision = newsitem.save_revision(user=user)
 
             if action is SaveActionSet.publish:
@@ -161,21 +175,8 @@ def edit(request, pk, newsitem_pk):
     })
 
 
-def unpublish(request, pk, newsitem_pk):
-    newsindex = get_object_or_404(
-        Page.objects.specific().type(NewsIndexMixin), pk=pk)
-    NewsItem = newsindex.get_newsitem_model()
-
-    user = get_user(request)
-
-    newsitem = get_object_or_404(NewsItem, newsindex=newsindex, pk=newsitem_pk)
-
-    policy = CollectionOwnershipPermissionPolicy(
-        model=NewsItem,
-        auth_model=NewsItem)
-    if not policy.user_has_permission_for_instance(user, 'change', newsitem):
-        raise PermissionDenied()
-
+@permission_check('change')
+def unpublish(request, newsindex, user, NewsItem, newsitem, policy):
     if request.method == 'POST':
         newsitem.unpublish()
         messages.success(request, _('{} has been unpublished').format(newsitem), [
@@ -190,25 +191,11 @@ def unpublish(request, pk, newsitem_pk):
     })
 
 
-def delete(request, pk, newsitem_pk):
-    newsindex = get_object_or_404(
-        Page.objects.specific().type(NewsIndexMixin), pk=pk)
-    NewsItem = newsindex.get_newsitem_model()
-
-    user = get_user(request)
-
-    newsitem = get_object_or_404(NewsItem, newsindex=newsindex, pk=newsitem_pk)
-
-    # Permission is only granted on collection, otherwise any user who can create can delete.
-    policy = CollectionOwnershipPermissionPolicy(
-        model=NewsItem,
-        auth_model=NewsItem)
-    if not policy.user_has_permission_for_instance(user, 'delete', newsitem):
-        raise PermissionDenied()
-
+@permission_check('delete')
+def delete(request, newsindex, user, NewsItem, newsitem, policy):
     if request.method == 'POST':
         newsitem.delete()
-        return redirect('wagtailnews:index', pk=pk)
+        return redirect('wagtailnews:index', pk=newsindex.pk)
 
     return render(request, 'wagtailnews/delete.html', {
         'newsindex': newsindex,

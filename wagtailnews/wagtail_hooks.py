@@ -76,11 +76,11 @@ def _get_register_newsitem_permissions_panel(cls):
         content_type = ContentType.objects.get_for_model(cls)
 
         return collection_member_permission_formset_factory(
+            # Delete is automatically covered in change.
             cls,
             [
                 ('add_newsitem', _("Create"), _("Create any newsitem")),
-                ('change_newsitem', _("Edit"), _("Edit any newsitem")),
-                ('delete_newsitem', _("Delete"), _("Delete any newsitem")),
+                ('change_newsitem', _("Edit"), _("Edit/delete any newsitem")),
                 ],
             'wagtailnews/permissions/includes/newsitem_permissions_formset.html'
             )
