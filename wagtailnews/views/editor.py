@@ -38,7 +38,9 @@ def create(request, pk):
         Page.objects.specific().type(NewsIndexMixin), pk=pk)
     NewsItem = newsindex.get_newsitem_model()
 
-    if not request.user.has_perms(format_perms(NewsItem, ['add', 'change'])):
+    user = get_user(request)
+
+    if not user.has_perms(format_perms(NewsItem, ['add', 'change'])):
         raise PermissionDenied()
 
     newsitem = NewsItem(newsindex=newsindex)
@@ -51,10 +53,21 @@ def create(request, pk):
 
         if form.is_valid():
             newsitem = form.save(commit=False)
+
             newsitem.live = action is SaveActionSet.publish
 
+            # We still need to validate that the user can add to the collection
+            policy = CollectionOwnershipPermissionPolicy(
+                model=NewsItem,
+                auth_model=NewsItem)
+
+            # Can not use instance check for add permissions
+            if newsitem.collection not in policy.collections_user_has_permission_for(user, 'add'):
+                raise PermissionDenied()
+
             newsitem.save()
-            newsitem.save_revision(user=request.user)
+            newsitem.save_revision(user=user)
+
 
             if action is SaveActionSet.publish:
                 messages.success(request, _('The news post "{0!s}" has been published').format(newsitem))
@@ -93,12 +106,13 @@ def edit(request, pk, newsitem_pk):
 
     newsitem = get_object_or_404(NewsItem, newsindex=newsindex, pk=newsitem_pk)
     newsitem = newsitem.get_latest_revision_as_newsitem()
+    user = get_user(request)
 
     # Permission is only granted on collection, otherwise any user who can create can edit.
     policy = CollectionOwnershipPermissionPolicy(
         model=NewsItem,
         auth_model=NewsItem)
-    if not policy.user_has_permission_for_instance(get_user(request), 'change', newsitem):
+    if not policy.user_has_permission_for_instance(user, 'change', newsitem):
         raise PermissionDenied()
 
 
@@ -113,7 +127,7 @@ def edit(request, pk, newsitem_pk):
 
         if form.is_valid():
             newsitem = form.save(commit=False)
-            revision = newsitem.save_revision(user=request.user)
+            revision = newsitem.save_revision(user=user)
 
             if action is SaveActionSet.publish:
                 revision.publish()
@@ -152,13 +166,15 @@ def unpublish(request, pk, newsitem_pk):
         Page.objects.specific().type(NewsIndexMixin), pk=pk)
     NewsItem = newsindex.get_newsitem_model()
 
+    user = get_user(request)
+
+    newsitem = get_object_or_404(NewsItem, newsindex=newsindex, pk=newsitem_pk)
+
     policy = CollectionOwnershipPermissionPolicy(
         model=NewsItem,
         auth_model=NewsItem)
-    if not policy.user_has_permission_for_instance(get_user(request), 'change', newsitem):
+    if not policy.user_has_permission_for_instance(user, 'change', newsitem):
         raise PermissionDenied()
-
-    newsitem = get_object_or_404(NewsItem, newsindex=newsindex, pk=newsitem_pk)
 
     if request.method == 'POST':
         newsitem.unpublish()
@@ -179,14 +195,16 @@ def delete(request, pk, newsitem_pk):
         Page.objects.specific().type(NewsIndexMixin), pk=pk)
     NewsItem = newsindex.get_newsitem_model()
 
+    user = get_user(request)
+
+    newsitem = get_object_or_404(NewsItem, newsindex=newsindex, pk=newsitem_pk)
+
     # Permission is only granted on collection, otherwise any user who can create can delete.
     policy = CollectionOwnershipPermissionPolicy(
         model=NewsItem,
         auth_model=NewsItem)
-    if not policy.user_has_permission_for_instance(get_user(request), 'delete', newsitem):
+    if not policy.user_has_permission_for_instance(user, 'delete', newsitem):
         raise PermissionDenied()
-
-    newsitem = get_object_or_404(NewsItem, newsindex=newsindex, pk=newsitem_pk)
 
     if request.method == 'POST':
         newsitem.delete()

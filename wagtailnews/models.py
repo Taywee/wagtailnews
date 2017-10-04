@@ -213,6 +213,7 @@ class AbstractNewsItem(index.Indexed, ClusterableModel, CollectionMember):
         default=False, editable=False)
 
     panels = [
+        FieldPanel('collection'),
         FieldPanel('date'),
     ]
 
