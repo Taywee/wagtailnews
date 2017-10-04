@@ -75,14 +75,6 @@ def _get_register_newsitem_permissions_panel(cls):
     def register_newsitem_permissions_panel():
         content_type = ContentType.objects.get_for_model(cls)
 
-        # Make sure permissions exist as well
-        # This may not be necessary; try it without first
-        #Permission.objects.get_or_create(
-        #    content_type=content_type,
-        #    codename='change_newsitem',
-        #    defaults={'name': 'Can change news items'}
-        #    )
-
         return collection_member_permission_formset_factory(
             cls,
             [
@@ -100,4 +92,4 @@ def register_all_permissions():
         for cls in NEWSINDEX_MODEL_CLASSES:
             hook = _get_register_newsitem_permissions_panel(cls.get_newsitem_model())
             _PERMISSIONS_HOOKS.append(hook)
-            hooks.register('register_group_permission_panel')(hook)
+            hooks.register('register_group_permission_panel', hook)
