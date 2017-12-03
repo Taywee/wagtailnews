@@ -1,5 +1,6 @@
 import json
 import logging
+from functools import partial
 
 from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
@@ -12,6 +13,7 @@ from wagtail.wagtailadmin.forms import SearchForm
 from wagtail.wagtailadmin.modal_workflow import render_modal_workflow
 from wagtail.wagtailcore.models import Page
 from wagtail.wagtailsearch.backends import get_search_backend
+from wagtail.wagtailcore.permission_policies.collections import CollectionOwnershipPermissionPolicy
 
 from ..models import NEWSINDEX_MODEL_CLASSES, AbstractNewsItem, NewsIndexMixin
 from ..permissions import (
@@ -106,6 +108,10 @@ def index(request, pk):
 
     paginator, page = paginate(request, newsitem_list)
 
+    policy = CollectionOwnershipPermissionPolicy(
+        model=NewsItem,
+        auth_model=NewsItem)
+
     return render(request, 'wagtailnews/index.html', {
         'newsindex': newsindex,
         'page': page,
@@ -113,6 +119,7 @@ def index(request, pk):
         'newsitem_list': page.object_list,
         'newsitem_perms': perms_for_template(request, NewsItem),
         'query_string': query,
+        'policy': policy,
     })
 
 

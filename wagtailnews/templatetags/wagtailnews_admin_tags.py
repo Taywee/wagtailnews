@@ -40,3 +40,12 @@ def newsitem_status(newsitem, link=True):
                 button['text']))
 
     return mark_safe(' + '.join(output))
+
+@register.simple_tag(takes_context=True)
+def check_permissions(context, perm, newsitem):
+    policy = context['policy']
+    user = context['request'].user
+    print('running policy {} for user {} perm {} and newsitem {}'.format(policy, user, perm, newsitem))
+    val = policy.user_has_permission_for_instance(user, perm, newsitem)
+    print('returning {}'.format(val))
+    return val

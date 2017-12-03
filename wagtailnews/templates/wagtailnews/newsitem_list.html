@@ -13,7 +13,8 @@
         <tr>
             <td class="title">
                 <h2>
-                    {% if newsitem_perms.change %}
+                  {% check_permissions 'change' newsitem as can_change_item %}
+                    {% if newsitem_perms.change and can_change_item %}
                         <a href="{% url 'wagtailnews:edit' pk=newsitem.newsindex_id newsitem_pk=newsitem.pk %}">
                             {{ newsitem }}
                         </a>
@@ -22,7 +23,7 @@
                     {% endif %}
                 </h2>
                 <ul class="actions">
-                    {% if newsitem_perms.change %}
+                    {% if newsitem_perms.change and can_change_item %}
                         <li><a href="{% url 'wagtailnews:edit' pk=newsitem.newsindex_id newsitem_pk=newsitem.pk %}" class="button button-small">{% trans 'Edit' %}</a></li>
                     {% endif %}
                     <li><a href="{% url 'wagtailnews:view_draft' pk=newsitem.newsindex_id newsitem_pk=newsitem.pk %}" class="button button-small button-secondary">{% trans 'View' %}</a></li>

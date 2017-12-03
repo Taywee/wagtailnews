@@ -30,24 +30,17 @@ def user_can_edit_news(user):
         # admin can edit news iff any news types exist
         return bool(newsitem_models)
 
-    for NewsItem in newsitem_models:
-        for perm in format_perms(NewsItem, ['add', 'change', 'delete']):
-            if user.has_perm(perm):
-                return True
-
-    return False
+    return any(user.has_perm(perm)
+        for NewsItem in newsitem_models
+            for perm in format_perms(NewsItem, ['add', 'change', 'delete']))
 
 
 def user_can_edit_newsitem(user, NewsItem):
     """
     Check if the user has permission to edit a particular NewsItem type.
     """
-    for perm in format_perms(NewsItem, ['add', 'change', 'delete']):
-        if user.has_perm(perm):
-            return True
-
-    return False
-
+    return any(user.has_perm(perm)
+        for perm in format_perms(NewsItem, ['add', 'change', 'delete']))
 
 def perms_for_template(request, NewsItem):
     return {action: request.user.has_perm(format_perm(NewsItem, action))
