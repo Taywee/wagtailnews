@@ -18,7 +18,7 @@ from wagtail.wagtailcore.permission_policies.collections import CollectionOwners
 
 from ..forms import SaveActionSet
 from ..models import NewsIndexMixin
-from ..permissions import format_perms, perms_for_template
+from ..permissions import format_perms, perms_for_template, user_can_edit_newsitem
 
 OPEN_PREVIEW_PARAM = 'do_preview'
 
@@ -98,7 +98,10 @@ def create(request, newsindex, user, NewsItem, policy):
 
             if action is SaveActionSet.publish:
                 messages.success(request, _('The news post "{0!s}" has been published').format(newsitem))
-                return redirect('wagtailnews:index', pk=newsindex.pk)
+                if user_can_edit_newsitem(user, NewsItem):
+                    return redirect('wagtailnews:index', pk=newsindex.pk)
+                else:
+                    return redirect('wagtailadmin_home')
 
             elif action is SaveActionSet.draft:
                 messages.success(request, _('A draft news post "{0!s}" has been created').format(newsitem))
@@ -146,7 +149,10 @@ def edit(request, newsindex, user, NewsItem, newsitem, policy):
             if action is SaveActionSet.publish:
                 revision.publish()
                 messages.success(request, _('Your changes to "{0!s}" have been published').format(newsitem))
-                return redirect('wagtailnews:index', pk=newsindex.pk)
+                if user_can_edit_newsitem(user, NewsItem):
+                    return redirect('wagtailnews:index', pk=newsindex.pk)
+                else:
+                    return redirect('wagtailadmin_home')
 
             elif action is SaveActionSet.draft:
                 messages.success(request, _('Your changes to "{0!s}" have been saved as a draft').format(newsitem))
@@ -182,7 +188,10 @@ def unpublish(request, newsindex, user, NewsItem, newsitem, policy):
         messages.success(request, _('{} has been unpublished').format(newsitem), [
             (reverse('wagtailnews:edit', kwargs={'pk': newsindex.pk, 'newsitem_pk': newsitem.pk}), _('Edit')),
         ])
-        return redirect('wagtailnews:index', pk=newsindex.pk)
+        if user_can_edit_newsitem(user, NewsItem):
+            return redirect('wagtailnews:index', pk=newsindex.pk)
+        else:
+            return redirect('wagtailadmin_home')
 
     return render(request, 'wagtailnews/unpublish.html', {
         'newsindex': newsindex,
@@ -195,7 +204,10 @@ def unpublish(request, newsindex, user, NewsItem, newsitem, policy):
 def delete(request, newsindex, user, NewsItem, newsitem, policy):
     if request.method == 'POST':
         newsitem.delete()
-        return redirect('wagtailnews:index', pk=newsindex.pk)
+        if user_can_edit_newsitem(user, NewsItem):
+            return redirect('wagtailnews:index', pk=newsindex.pk)
+        else:
+            return redirect('wagtailadmin_home')
 
     return render(request, 'wagtailnews/delete.html', {
         'newsindex': newsindex,
